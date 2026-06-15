@@ -5,10 +5,13 @@ use Avilio\ACF;
 function get_menu_by_location($location, $args = [])
 {
     $locations = get_nav_menu_locations();
-    $object = wp_get_nav_menu_object($locations[$location]);
-    $navbar_items = wp_get_nav_menu_items($object->name, $args);
+    if(isset($locations[$location])){
+        $object = wp_get_nav_menu_object($locations[$location]);
+        $navbar_items = wp_get_nav_menu_items($object->name, $args);
 
-    return build_tree($navbar_items);
+        return ["name" => $object->name, 'menu' => build_tree($navbar_items)];
+    }
+    return false;
 }
 
 function build_tree($elements, $parentId = 0)

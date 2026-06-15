@@ -1,8 +1,7 @@
 <?php
 namespace Avilio;
 
-class Pagination
-{
+class Pagination {
     private $total_items;
     private $items_per_page;
     private $current_page;
@@ -10,8 +9,7 @@ class Pagination
     private $url_parameter;
     private $additional_params;
 
-    public function __construct($args)
-    {
+    public function __construct($args) {
         $this->total_items = $args['total_items'] ?? 0;
         $this->items_per_page = $args['items_per_page'] ?? get_option('posts_per_page');
         $this->url_parameter = $args['url_parameter'] ?? 'paged';
@@ -20,47 +18,39 @@ class Pagination
         $this->total_pages = ceil($this->total_items / $this->items_per_page);
     }
 
-    private function get_current_page()
-    {
+    private function get_current_page() {
         return isset($_GET[$this->url_parameter]) ? max(1, intval($_GET[$this->url_parameter])) : 1;
     }
 
 
-    public function generate()
-    {
-        if ($this->total_pages < 1)
-            return [
-                'info' => [
-                    'total' => 0
-                ]
-            ];
+    public function generate() {
+        if ($this->total_pages <= 1) return '';
 
         $output = [];
         // Info
         $start = ($this->current_page - 1) * $this->items_per_page + 1;
         $end = min($this->current_page * $this->items_per_page, $this->total_items);
-        $output['info'] = ['start' => $start, 'end' => $end, 'total' => $this->total_items];
+        $output['info'] = ['start'=>$start,'end'=>$end,'total'=>$this->total_items];
         $output['page'] = [];
-
+        
         $prev_link = "#";
         if ($this->current_page > 1) {
             $prev_link = $this->current_page - 1;
         }
-        $output['page']['prev'] = $this->get_page_link($prev_link, 'Prev');
+        $output['page'][] = $this->get_page_link($prev_link,'Previous');
 
-        $output['page']['numbers'] = $this->get_page_numbers();
+        $output['page'] = array_merge($output['page'],$this->get_page_numbers());
 
         $next_link = "#";
         if ($this->current_page < $this->total_pages) {
-            $next_link = $this->current_page + 1;
+            $next_link =  $this->current_page + 1;
         }
-        $output['page']['next'] = $this->get_page_link($next_link, 'Next');
+        $output['page'][] = $this->get_page_link($next_link,'Next');
 
         return $output;
     }
 
-    private function get_page_numbers()
-    {
+    private function get_page_numbers() {
         $pages = [];
 
         if ($this->total_pages <= 5) {
@@ -70,10 +60,10 @@ class Pagination
             return $pages;
         }
 
-        $pages[] = $this->get_page_link(1);
+        $pages[]= $this->get_page_link(1);
 
         if ($this->current_page > 3) {
-            $pages[] = ['text' => '...'];
+            $pages[] = ['text'=>'...'];
         }
         $start = ($this->current_page <= 2) ? 2 : (($this->current_page < $this->total_pages) ? max(2, $this->current_page - 1) : $this->total_pages - 2);
         $end = ($this->current_page <= 2) ? 3 : min($this->total_pages - 1, $this->current_page + 1);
@@ -81,27 +71,24 @@ class Pagination
             $pages[] = $this->get_page_link($i);
         }
         if ($this->current_page < $this->total_pages - 2) {
-            $pages[] = ['text' => '...'];
+            $pages[] = ['text'=>'...'];
         }
         $pages[] = $this->get_page_link($this->total_pages);
 
         return $pages;
     }
 
-    private function get_page_link($page_number, $text = null)
-    {
+    private function get_page_link($page_number,$text=null) {
         $text = $text ?: $page_number;
-        $class = $this->current_page == $page_number ? 'current' : ($page_number === "#" ? 'disabled' : '');
+        $class = $this->current_page == $page_number ? 'current' : ($page_number === "#"? 'disabled': '');
         $url = $page_number;
-        $baseURL = (is_category() || is_tag() || is_tax()) ? get_term_link(get_queried_object()) :get_permalink();
-        
-        if ($url !== "#") {
+        if($url !== "#"){
             $url = add_query_arg(array_merge(
                 [$this->url_parameter => $page_number],
                 $this->additional_params
-            ), $baseURL);
+            ), get_permalink());
         }
-
-        return ['link' => $url, 'text' => $text, 'class' => $class];
+        
+        return ['link' => $url,'text' => $text,'class'=>$class];
     }
 }

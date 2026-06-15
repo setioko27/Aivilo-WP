@@ -46,6 +46,8 @@ class Theme
         ]);
     }
 
+    
+
     public function addAction(string $hook, callable $function, int $priority = self::DEFAULT_PRIORITY, int $accepted_args = self::DEFAULT_ARGS): void
     {
         add_action($hook, fn(...$args) => call_user_func_array($function, $args), $priority, $accepted_args);
@@ -68,8 +70,12 @@ class Theme
 
     public function addSupport(string $feature, ?array $options = null): self
     {
-        $this->actionAfterSetup(function() use ($feature, $options) {
-            add_theme_support($feature, $options ?? []);
+        $this->actionAfterSetup(function () use ($feature, $options) {
+            if ($options) {
+                add_theme_support($feature, $options);
+            } else {
+                add_theme_support($feature);
+            }
         });
         return $this;
     }

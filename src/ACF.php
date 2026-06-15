@@ -2,133 +2,112 @@
 namespace Avilio;
 
 use Avilio\Sanitize;
+class ACF{
 
-class ACF {
-    private const DEFAULT_TARGET = '_self';
-    private const ALLOWED_TYPES = [
-        'text' => 'clean',
-        'textarea' => 'textarea',
-        'wswyig' => 'textarea',
-        'link' => 'link',
-        'repeater' => 'repeater',
-        'image' => 'image'
-    ];
-
-    public static function field_object(string $field_name, $parent, bool $is_sub): ?array 
+    public static function field_object($field_name, $parent, $is_sub)
     {
-        $method = $is_sub ? 'get_sub_field' : 'get_field';
-        $object_method = $is_sub ? 'get_sub_field_object' : 'get_field_object';
-
-        return [
-            'object' => $object_method($field_name, $parent),
-            'field' => $method($field_name, $parent)
-        ];
+        if ($is_sub) {
+            return [
+                'object' => get_sub_field_object($field_name, $parent),
+                'field' => get_sub_field($field_name, $parent)
+            ];
+        } else {
+            return [
+                'object' => get_field_object($field_name, $parent),
+                'field' => get_field($field_name, $parent)
+            ];
+        }
     }
-
-    public static function field(string $field_name, array $args = [], $parent = false, bool $is_sub = false, bool $is_sanitize = true)
+    public static function field($field_name, $args = [], $parent = false, $is_sub = false, $is_sanitize = true)
     {
-        $obj = self::field_object($field_name, $parent, $is_sub);
-        
-        if (!$is_sanitize) {
+
+        $obj = ACF::field_object($field_name, $parent, $is_sub);
+        if (!$is_sanitize || (isset($args['is_sanitize']) && $args['is_sanitize'] === false )) {
             return $obj['field'];
         }
+        
+        $object = $obj['object'];
+        if ($object) {
+            $type = $object['type'];
+            $value = $obj['field'];
 
-        $object = $obj['object'] ?? null;
-        if (!$object) {
+            switch ($type) {
+                case 'text':
+                    return Sanitize::clean($value);
+                case 'textarea':
+                case 'wswyig':
+                    return Sanitize::clean($value, 'textarea');
+                case 'link':
+                    $link_object = ACF::link_object($value);
+                    if ($link_object) {
+                        $link_object['title'] = Sanitize::clean($link_object['title']);
+                        $link_object['url'] = Sanitize::clean($link_object['url'], 'url');
+                        $link_object['target'] = Sanitize::clean($link_object['target'], 'attr');
+                    }
+                    return $link_object;
+                case 'repeater':
+                    return ACF::repeater_data($field_name, $args, $parent);
+                case 'image':
+                    if (isset($args['required']) && $args['required']) {
+
+                        return get_image($value, $args['size'] ?? null,$args['default']);
+                    }elseif(is_numeric($value)){
+                        $size = $args['size']??'full';
+                        $img = wp_get_attachment_image_src($value, $size);
+                        return $img[0];
+                    }
+
+                    //if((isset($args['required']) && $args['required']) || $is_sub){
+                    
+                    return $value;
+                //}
+
+                default:
+                    return $value;
+            }
+        } else {
             return null;
         }
-
-        $type = $object['type'];
-        $value = $obj['field'];
-
-        return self::process_field_type($type, $value, $args, $field_name, $parent);
     }
 
-    private static function process_field_type(string $type, $value, array $args, string $field_name, $parent)
+    public static function option($name, $args = [])
     {
-        if (!isset(self::ALLOWED_TYPES[$type])) {
-            return $value;
-        }
-
-        switch ($type) {
-            case 'text':
-                return Sanitize::clean($value);
-            
-            case 'textarea':
-            case 'wswyig':
-                return Sanitize::clean($value, 'textarea');
-            
-            case 'link':
-                return self::process_link($value);
-            
-            case 'repeater':
-                return self::repeater_data($field_name, $args, $parent);
-            
-            case 'image':
-                return self::process_image($value, $args);
-        }
-
-        return $value;
+        return ACF::field($name, $args, 'option');
     }
 
-    private static function process_link($value): ?array
-    {
-        if (!$value || !isset($value['url'])) {
-            return null;
-        }
-
-        return [
-            'url' => Sanitize::clean($value['url'], 'url'),
-            'target' => Sanitize::clean($value['target'] ?? self::DEFAULT_TARGET, 'attr'),
-            'title' => Sanitize::clean($value['title'])
-        ];
-    }
-
-    private static function process_image($value, array $args)
-    {
-        if (isset($args['required']) && $args['required']) {
-            return get_image($value, $args['size'] ?? null, $args['default'] ?? 'default_image');
-        }
-
-        if (is_numeric($value)) {
-            $size = $args['size'] ?? 'full';
-            $img = wp_get_attachment_image_src($value, $size);
-            return $img[0] ?? null;
-        }
-
-        return $value;
-    }
-
-    public static function option(string $name, array $args = [])
-    {
-        return self::field($name, $args, 'option');
-    }
-
-    public static function repeater_data(string $repeater_field, array $sub_fields = [], $parent = false): array
+    public static function repeater_data($repeater_field, $sub_fields = [], $parent = false)
     {
         $data = [];
-        
-        if (!have_rows($repeater_field, $parent)) {
-            return $data;
+        if (have_rows($repeater_field, $parent)) {
+            while (have_rows($repeater_field, $parent)) {
+                the_row();
+                if (empty($sub_fields)) {
+                    $item = get_row(true);
+                } else {
+                    $item = [];
+                    foreach ($sub_fields as $key => $field_name) {
+                        $field_key = is_numeric($key) ? $field_name : $key;
+                        $item[$field_key] = get_sub_field($field_name) ?? null;
+                    }
+                }
+    
+    
+                $data[] = $item;
+            }
         }
-
-        while (have_rows($repeater_field, $parent)) {
-            the_row();
-            $data[] = empty($sub_fields) 
-                ? get_row(true) 
-                : self::process_sub_fields($sub_fields);
-        }
-
         return $data;
     }
 
-    private static function process_sub_fields(array $sub_fields): array
+    public static function link_object($object)
     {
-        $item = [];
-        foreach ($sub_fields as $key => $field_name) {
-            $field_key = is_numeric($key) ? $field_name : $key;
-            $item[$field_key] = get_sub_field($field_name) ?? null;
+        if ($object && isset($object['url'])) {
+            return [
+                'url' => esc_url($object['url']),
+                'target' => esc_attr($object['target'] ?? "_self"),
+                'title' => $object['title']
+            ];
+        } else {
+            return false;
         }
-        return $item;
     }
 }

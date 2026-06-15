@@ -54,11 +54,12 @@ class PageTemplate
     private function getSingleContext(): array
     {
         global $post;
+        $author_id = get_post_field('post_author', $post->ID);
         return [
             'title' => get_the_title($post),
             'content' => apply_filters('the_content', $post->post_content),
             'excerpt' => get_the_excerpt($post),
-            'author' => get_the_author(),
+            'author' => get_the_author_meta('display_name', $author_id),
             'date' => get_the_date('', $post),
             'featured_image' => get_the_post_thumbnail_url($post, 'full'),
             'category' => get_the_category()
@@ -73,11 +74,14 @@ class PageTemplate
     private function getPageContext(): array
     {
         global $post;
+        $author_id = get_post_field('post_author', $post->ID);
         return [
             'title' => get_the_title($post),
             'content' => apply_filters('the_content', $post->post_content),
             'featured_image' => get_the_post_thumbnail_url($post, 'full'),
-            'url' => get_the_permalink($post)
+            'url' => get_the_permalink($post),
+            'author' => get_the_author_meta('display_name', $author_id),
+            'date' => date('d M Y', strtotime(get_the_date()))
         ];
     }
 
