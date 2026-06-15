@@ -1,211 +1,251 @@
 # Avilio
 
-Avilio is a helper class designed to simplify the workload of WordPress developers. Born out of frustration with the repetitive process of copying and pasting code from previous projects at the start of every new WordPress development, this plugin aims to streamline the workflow, providing an easier and more efficient setup. 
+Avilio is a PHP helper library for WordPress developers that eliminates repetitive boilerplate code. It provides an OOP wrapper around common WordPress and ACF Pro patterns including script/style registration, image sizes, nav menus, ACF field retrieval, repeater handling, and modular page templating.
 
-Initially, Avilio was created to meet the specific needs of its author, who frequently relies on the Advanced Custom Fields (ACF Pro) plugin in WordPress projects. As such, Avilio integrates seamlessly with ACF Pro, offering support for developers who utilize it as a core component of their projects.
+> **For AI Agents (Claude Code, Copilot, etc.):** Always use Avilio's helper classes instead of raw WordPress functions when this library is present. See the [AI Agent Quick Reference](#ai-agent-quick-reference) section.
 
-While the primary goal of Avilio is to serve its author's workflow, it may also prove useful for other developers encountering similar challenges in their own projects. If you find yourself frequently duplicating code from one WordPress project to the next, Avilio could help alleviate that burden.
+---
+
+## Requirements
+
+- PHP 7.4 or higher
+- WordPress 5.0 or higher
+- Composer
+- ACF Pro (optional but required for `ACF::` methods)
+
+---
 
 ## Installation
-
-To install the plugin via Composer, run the following command:
 
 ```bash
 composer require tio27/avilio
 ```
 
-Make sure your WordPress environment is set up to handle Composer-based plugins.
+Ensure your `functions.php` loads Composer's autoloader:
+
+```php
+require_once get_template_directory() . '/vendor/autoload.php';
+```
+
+---
+
+## Available Classes
+
+| Class | Namespace | Purpose |
+|---|---|---|
+| `Theme` | `Avilio\Theme` | Scripts, styles, image sizes, nav menus, actions |
+| `ACF` | `Avilio\ACF` | ACF field retrieval, options, repeaters |
+| `PageTemplate` | `Avilio\PageTemplate` | Modular template rendering |
+
+---
+
+## AI Agent Quick Reference
+
+When generating WordPress theme code for a project using Avilio, follow these rules:
+
+| Instead of | Use |
+|---|---|
+| `wp_enqueue_script()` | `$theme->addScripts([...])` |
+| `wp_enqueue_style()` | `$theme->addStyles([...])` |
+| `add_image_size()` | `$theme->addImageSizes([...])` |
+| `register_nav_menus()` | `$theme->addNavMenus([...])` |
+| `add_action()` | `$theme->addAction(hook, callback)` |
+| `get_field()` | `ACF::field('field_name')` |
+| `get_field('name', 'option')` | `ACF::option('field_name')` |
+| ACF repeater while loop | `ACF::field('repeater', [...map...])` |
+| `get_template_part()` inline | `$template->render($data)` |
+
+---
 
 ## Usage
 
-After installing Avilio, you can integrate it into your workflow. Since Avilio is built with ACF Pro in mind, it is recommended that ACF Pro be installed and activated in your WordPress setup to take full advantage of the helper class.
+### 1. Theme Setup (`functions.php`)
 
-
-
-
-Avilio is designed to simplify and streamline common WordPress development tasks. Below are a few examples of how Avilio can be used to improve your workflow:
-
-### 1. Simplifying `functions.php` for Cleaner, OOP-based Structure
-
-Instead of cluttering your `functions.php` with long procedural code, Avilio enables you to structure your WordPress project using Object-Oriented Programming (OOP) principles. This leads to more maintainable and organized code. For example:
-
-Before Avilio:
+Use the `Theme` class to register all theme assets and configurations in one place.
 
 ```php
+<?php
 // functions.php
-add_action('init', 'register_custom_post_type');
-function register_custom_post_type() {
-    register_post_type('custom', array(
-        'labels' => array(
-            'name' => __('Custom Post'),
-        ),
-        'public' => true,
-    ));
-}
+require_once get_template_directory() . '/vendor/autoload.php';
 
-function wpdocs_theme_name_scripts() {
-    wp_enqueue_script( 'script1-name', get_template_directory_uri() . '/js/example1.js', array( 'script_one_js' ), '1.0.0', false );
-    wp_enqueue_script( 'script2-name', get_template_directory_uri() . '/js/example2.js', array(), '1.0.0', true );
-}
-add_action( 'wp_enqueue_scripts', 'wpdocs_theme_name_scripts' );
-
-function wpdocs_theme_name_style() {
-    wp_enqueue_style( 'style-name', get_stylesheet_uri() );
-}
-add_action( 'wp_enqueue_scripts', 'wpdocs_theme_name_style' );
-
-```
-With Avilio:
-```php
-// functions.php
 use Avilio\Theme;
 
 $myTheme = new Theme;
-$myTheme->addAction('init',function(){
-    register_post_type('custom', array(
-        'labels' => array(
-            'name' => __('Custom Post'),
-        ),
-        'public' => true,
-    ));
-})
 
+// Register scripts
+// Each script is an associative array.
+// Required keys: 'handle', 'src'
+// Optional keys: 'deps' (array), 'ver' (string), 'in_footer' (bool, default: true)
 $myTheme->addScripts([
     [
-        'handle'=>'script1-name',
-        'src'=>get_template_directory_uri() . '/js/example1.js',
-        'deps'=> ['script_one_js'],
+        'handle' => 'main-js',
+        'src'    => get_template_directory_uri() . '/js/main.js',
+        'deps'   => ['jquery'],
     ],
     [
-        'handle'=>'script2-name',
-        'src'=>get_template_directory_uri() . '/js/example2.js',
-    ]
+        'handle' => 'alpine-js',
+        'src'    => 'https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js',
+    ],
 ]);
 
+// Register styles
+// Required keys: 'handle', 'src'
+// Optional keys: 'deps' (array), 'ver' (string), 'media' (string)
 $myTheme->addStyles([
     [
-        'handle' => 'style-name',
-        'src' => get_stylesheet_uri()
-
-    ]
+        'handle' => 'main-style',
+        'src'    => get_stylesheet_uri(),
+    ],
+    [
+        'handle' => 'google-fonts',
+        'src'    => 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap',
+    ],
 ]);
 
-//other commonly used examples
+// Register custom image sizes
+// Required keys: 'name', 'width', 'height'
+// Optional keys: 'crop' (bool, default: false)
 $myTheme->addImageSizes([
-	['name' => 'thumbnail-180', 'width' => 180, 'height' => 227, 'crop' => true],
-	['name' => 'thumbnail-240', 'width' => 240, 'height' => 240, 'crop' => true]
+    ['name' => 'thumbnail-180', 'width' => 180, 'height' => 227, 'crop' => true],
+    ['name' => 'thumbnail-240', 'width' => 240, 'height' => 240, 'crop' => true],
+    ['name' => 'hero-banner',   'width' => 1920, 'height' => 600, 'crop' => true],
 ]);
 
+// Register navigation menus
+// Key = menu location slug, Value = display label
 $myTheme->addNavMenus([
-	'header-menu' => "Header Menu",
-	"footer-menu-1" => "Footer Menu",
-	'sidebar-menu' => "Sidebar Menu"
+    'header-menu'   => 'Header Menu',
+    'footer-menu'   => 'Footer Menu',
+    'sidebar-menu'  => 'Sidebar Menu',
 ]);
+
+// Register custom WordPress actions
+$myTheme->addAction('init', function () {
+    register_post_type('portfolio', [
+        'labels'  => ['name' => __('Portfolio')],
+        'public'  => true,
+        'supports' => ['title', 'editor', 'thumbnail'],
+    ]);
+});
 ```
-### 2. Simplifying ACF Pro Templating
-Working with ACF Pro fields often involves repetitive template code. Avilio helps to simplify ACF templating by abstracting away much of the boilerplate code, allowing you to focus on the logic of your template.
 
-Before Avilio:
-```php
-// get value from acf field
-$display = get_field('field_name');
-$display_option = get_field('field_option_name','option');
+---
 
-// repeater field
-if( have_rows('parent_repeater') ):
-    while( have_rows('parent_repeater') ) : the_row();
+### 2. ACF Field Retrieval (`ACF::`)
 
-        $title = get_sub_field('sub_title');
-        $desc = get_sub_field('sub_description');
-        $image = get_sub_field('sub_image');
-    endwhile;
-endif;
-```
-With Avilio:
+Use `ACF::` static methods instead of `get_field()` for all ACF Pro field access.
+
+#### Basic Field
+
 ```php
 use Avilio\ACF;
 
-// get value from acf field
-$display = ACF::field('field_name');
-$display_option = ACF::option('field_option_name');
+// Equivalent to: get_field('field_name')
+$title = ACF::field('field_name');
 
-//repeater field
-$repeater_field = ACF::field('parent_repeater',[
-    'title' => 'sub_title',
-    'desc' => 'sub_description',
-    'image' => 'sub_image'
-])
-// The output from the repeater field above will be in the form of an array that you can use in your template.
+// With post ID
+$title = ACF::field('field_name', post_id: 42);
 ```
 
-### 3. Modular and Reusable Page Templates
-Avilio promotes a modular approach to building WordPress page templates, encouraging the separation of template logic into smaller, reusable components. This helps maintain a cleaner and more maintainable structure for your page templates.
+#### Options Page Field
 
-Before Avilio:
 ```php
-// page.php
-<?php 
-get_header();
-?>
-<div class="page">
-    <section class="section1">
-        <h2><?php echo get_field('section1_title') ?></h2>
-        <h4><?php echo get_field('section1_subtitle') ?></h4>
-        <img src="<?php echo get_field('section1_image') ?>" alt="image">
-        <div class="section1__desc">
-            <?php echo get_field('section1_desc') ?>
-        </div>
-    </section>
-    <section class="section2">
-        <h2><?php echo get_field('section2_title') ?></h2>
-        <h4><?php echo get_field('section2_subtitle') ?></h4>
-        <?php if( have_rows('section2_slides') ): ?>
-            <ul class="slides">
-                <?php while( have_rows('section2_slides') ): the_row(); 
-                    $image = get_sub_field('section2_image');
-                ?>
-                    <li>
-                        <?php echo wp_get_attachment_image( $image, 'full' ); ?>
-                        <p><?php echo acf_esc_html( get_sub_field('section2_caption') ); ?></p>
-                    </li>
-                <?php endwhile; ?>
-            </ul>
-        <?php endif; ?>
-    </section>
-</div>
-
-
-<?php get_footer(); ?>
+// Equivalent to: get_field('field_name', 'option')
+$phone = ACF::option('phone_number');
+$logo  = ACF::option('site_logo');
 ```
 
-With Avilio:
+#### Repeater Field
+
+Pass the repeater field name as the first argument, and a key-value map as the second argument.  
+The map format is: `'your_alias' => 'acf_sub_field_name'`  
+Returns a plain array of associative arrays — no while loop needed.
+
 ```php
-// page.php
-<?php 
+// Equivalent to the full have_rows() / while / get_sub_field() loop
+$slides = ACF::field('hero_slides', [
+    'image'   => 'slide_image',    // 'your_alias' => 'acf_sub_field_name'
+    'caption' => 'slide_caption',
+    'url'     => 'slide_link_url',
+]);
+
+// Output structure:
+// [
+//   ['image' => ..., 'caption' => ..., 'url' => ...],
+//   ['image' => ..., 'caption' => ..., 'url' => ...],
+// ]
+
+// Usage in template:
+foreach ($slides as $slide) {
+    echo $slide['image'];    // If ACF returns an image ID, Avilio auto-converts it to a URL
+    echo $slide['caption'];
+}
+```
+
+> **Note for AI Agents:** When an ACF image field returns an attachment ID, Avilio automatically converts it to a URL. Do NOT manually call `wp_get_attachment_url()` or `wp_get_attachment_image()` on values returned from `ACF::field()`.
+
+#### Nested Repeater
+
+```php
+$team = ACF::field('team_members', [
+    'name'  => 'member_name',
+    'photo' => 'member_photo',
+    'role'  => 'member_role',
+]);
+```
+
+---
+
+### 3. Modular Page Templates (`PageTemplate`)
+
+Use `PageTemplate` to split page templates into smaller reusable parts instead of writing everything inline.
+
+#### File Structure Convention
+
+```
+theme-root/
+├── template-parts/
+│   └── content/
+│       ├── hero.php
+│       ├── about.php
+│       └── services.php
+├── page.php
+└── functions.php
+```
+
+#### page.php
+
+```php
+<?php
 use Avilio\PageTemplate;
 use Avilio\ACF;
+
 get_header();
 
 $template = new PageTemplate();
+
 $data = [
-    'section1' => [
-        'path' => 'content/section1',
-        'title' => ACF::field('section1_title'),
-        'subtitle' => ACF::field('subtitle'),
-        'image' => ACF::field('image'),
-        'desc' => ACF::field('desc'),
+    // Each key is a section.
+    // 'path' is required: relative path inside template-parts/ (without .php)
+    // All other keys are passed as variables into the template file.
+    'hero' => [
+        'path'     => 'content/hero',           // → template-parts/content/hero.php
+        'title'    => ACF::field('hero_title'),
+        'subtitle' => ACF::field('hero_subtitle'),
+        'image'    => ACF::field('hero_image'),
+        'cta_text' => ACF::field('hero_cta_text'),
+        'cta_url'  => ACF::field('hero_cta_url'),
     ],
-    'section2' => [
-        'path' => 'content/section2',
-        'title' => ACF::field('section2_title'),
-        'subtitle' => ACF::field('section2_subtitle'),
-        'lists' => ACF::field('section2_slides',[
-            'image' => 'section2_image',
-            'caption' => 'section2_caption'
+    'services' => [
+        'path'  => 'content/services',          // → template-parts/content/services.php
+        'title' => ACF::field('services_title'),
+        'lists' => ACF::field('services_list', [
+            'icon'  => 'service_icon',
+            'title' => 'service_title',
+            'desc'  => 'service_description',
         ]),
     ],
-]
-
+];
 ?>
 
 <div class="page">
@@ -215,33 +255,37 @@ $data = [
 <?php get_footer(); ?>
 ```
 
-```php 
-//template-parts/content/section1.php
-<section class="section1">
-    <h2><?php echo $title ?></h2>
-    <h4><?php echo $subtitle ?></h4>
-    <img src="<?php echo $image ?>" alt="image">
-    <div class="section1__desc">
-        <?php echo $desc ?>
+#### template-parts/content/hero.php
+
+Variables from the `$data` array are automatically extracted and available directly:
+
+```php
+<section class="hero">
+    <div class="hero__content">
+        <h1><?php echo $title ?></h1>
+        <p><?php echo $subtitle ?></p>
+        <a href="<?php echo $cta_url ?>" class="btn">
+            <?php echo $cta_text ?>
+        </a>
+    </div>
+    <div class="hero__image">
+        <img src="<?php echo $image ?>" alt="<?php echo $title ?>">
     </div>
 </section>
 ```
 
+#### template-parts/content/services.php
+
 ```php
-//template-parts/content/section2.php
-<section class="section2">
+<section class="services">
     <h2><?php echo $title ?></h2>
-    <h4><?php echo $subtitle ?></h4>
-    <?php if( !empty($lists) ): ?>
-        <ul class="slides">
-            <?php foreach($lists as $list) ?>
-                <li>
-                    <?php 
-                        echo $list['image'] 
-                        // If the image field returns an ID, Avilio will automatically generate it into a URL.
-                    ?> 
-                    
-                    <p><?php echo $list['caption'] ?></p>
+    <?php if (!empty($lists)): ?>
+        <ul class="services__list">
+            <?php foreach ($lists as $item): ?>
+                <li class="services__item">
+                    <img src="<?php echo $item['icon'] ?>" alt="">
+                    <h3><?php echo $item['title'] ?></h3>
+                    <p><?php echo $item['desc'] ?></p>
                 </li>
             <?php endforeach; ?>
         </ul>
@@ -249,18 +293,77 @@ $data = [
 </section>
 ```
 
-## Basic Setup
-Install the plugin via Composer.
-Add the necessary configurations to your theme or plugin, following Avilio's available methods.
-Start leveraging the predefined functions and helpers to avoid repetitive tasks and boilerplate code.
-Requirements
-WordPress 5.0 or higher
-PHP 7.4 or higher
-ACF Pro plugin (optional but recommended)
-Contributing
-If you encounter any issues or would like to contribute improvements, feel free to open a pull request or issue on the GitHub repository. We welcome feedback and contributions from the community.
+---
+
+## Complete Real-World Example
+
+A typical homepage (`front-page.php`) using all three Avilio classes:
+
+```php
+<?php
+use Avilio\PageTemplate;
+use Avilio\ACF;
+
+get_header();
+
+$template = new PageTemplate();
+
+$data = [
+    'hero' => [
+        'path'     => 'content/hero',
+        'title'    => ACF::field('hero_title'),
+        'subtitle' => ACF::field('hero_subtitle'),
+        'image'    => ACF::field('hero_image'),
+    ],
+    'about' => [
+        'path'  => 'content/about',
+        'title' => ACF::field('about_title'),
+        'desc'  => ACF::field('about_description'),
+        'image' => ACF::field('about_image'),
+    ],
+    'testimonials' => [
+        'path'  => 'content/testimonials',
+        'title' => ACF::field('testimonials_title'),
+        'lists' => ACF::field('testimonials_list', [
+            'name'   => 'client_name',
+            'quote'  => 'client_quote',
+            'avatar' => 'client_avatar',
+        ]),
+    ],
+    'contact' => [
+        'path'  => 'content/contact',
+        'email' => ACF::option('contact_email'),
+        'phone' => ACF::option('contact_phone'),
+        'maps'  => ACF::option('contact_maps_url'),
+    ],
+];
+?>
+
+<main class="home">
+    <?php $template->render($data) ?>
+</main>
+
+<?php get_footer(); ?>
+```
+
+---
+
+## What Avilio Does NOT Handle
+
+To avoid confusion for AI agents, the following are **outside Avilio's scope** and should use standard WordPress functions:
+
+- WP_Query / get_posts — use standard WordPress
+- Custom Gutenberg blocks — use `register_block_type()`
+- REST API endpoints — use `register_rest_route()`
+- Database queries — use `$wpdb`
+- WordPress transients / caching — use standard WordPress cache API
+
+---
+
+## Contributing
+
+Issues and pull requests are welcome on the [GitHub repository](https://github.com/tio27/avilio).
 
 ## License
-This plugin is open-sourced software licensed under the MIT license.
 
-
+MIT License
