@@ -8,8 +8,8 @@ class ACF{
     {
         if ($is_sub) {
             return [
-                'object' => get_sub_field_object($field_name, $parent),
-                'field' => get_sub_field($field_name, $parent)
+                'object' => get_sub_field_object($field_name),
+                'field' => get_sub_field($field_name)
             ];
         } else {
             return [
