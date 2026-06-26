@@ -349,7 +349,47 @@ Variables from the `$data` array are automatically extracted and available direc
         </ul>
     <?php endif; ?>
 </section>
+#### Flexible Page Templates (`render_flexible`)
+
+If your page structure depends completely on an ACF Flexible Content field, allowing clients to freely add and reorder page modules, use the `render_flexible` method.
+
+This eliminates all manual loops (`have_rows()`, `while()`, `get_row_layout()`, etc.) and automatically routes layout types to their respective template parts.
+
+```php
+<?php
+// page.php
+use Avilio\PageTemplate;
+
+get_header();
+
+$template = new PageTemplate();
+
+// Maps layout slugs to their target template part paths and subfield configurations.
+// Under the hood, Avilio loads the flexible content field 'page_modules',
+// and renders the matched templates in the exact order determined by the client.
+$template->render_flexible('page_modules', [
+    'hero' => [
+        'path'     => 'content/hero',           // relative path inside template-parts/
+        'title'    => 'hero_title',             // alias => subfield name
+        'subtitle' => 'hero_subtitle',
+        'image'    => 'hero_image',
+    ],
+    'services' => [
+        'path'  => 'content/services',
+        'title' => 'services_title',
+        'lists' => [                            // sub-repeater mapping
+            'field' => 'services_list',
+            'icon'  => 'service_icon',
+            'title' => 'service_title',
+            'desc'  => 'service_description',
+        ],
+    ],
+]);
+
+get_footer();
 ```
+
+The template-part files (e.g., `template-parts/content/hero.php`) are fully reusable and receive variables extracted in the exact same format as standard `render()`.
 
 ---
 

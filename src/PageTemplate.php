@@ -154,6 +154,38 @@ class PageTemplate
         }
     }
 
+    public function render_flexible(string $field_name, array $layouts_config = [], $parent = false): void
+    {
+        $acf_args = [];
+        $paths = [];
+        foreach ($layouts_config as $layout => $config) {
+            $paths[$layout] = $config['path'] ?? null;
+            
+            $subfields = $config;
+            unset($subfields['path']);
+            $acf_args[$layout] = $subfields;
+        }
+
+        $layouts = \Avilio\ACF::field($field_name, $acf_args, $parent);
+        
+        if (!empty($layouts) && is_array($layouts)) {
+            foreach ($layouts as $layout_data) {
+                $layout_name = $layout_data['layout'] ?? null;
+                if (!$layout_name || empty($paths[$layout_name])) {
+                    continue;
+                }
+
+                $path = $paths[$layout_name];
+                
+                $data = $layout_data;
+                unset($data['layout']);
+                
+                $path = $this->resolvePath($path);
+                $this->part($path, $data);
+            }
+        }
+    }
+
     private function resolvePath(string $path): string
     {
         return strpos($path, "~") !== 0 
