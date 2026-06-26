@@ -36,6 +36,7 @@ require_once get_template_directory() . '/vendor/autoload.php';
 | `Theme` | `Avilio\Theme` | Scripts, styles, image sizes, nav menus, actions |
 | `ACF` | `Avilio\ACF` | ACF field retrieval, options, repeaters |
 | `PageTemplate` | `Avilio\PageTemplate` | Modular template rendering |
+| `Pagination` | `Avilio\Pagination` | Pagination data generator (returns array, not HTML) |
 
 ---
 
@@ -53,7 +54,9 @@ When generating WordPress theme code for a project using Avilio, follow these ru
 | `get_field()` | `ACF::field('field_name')` |
 | `get_field('name', 'option')` | `ACF::option('field_name')` |
 | ACF repeater while loop | `ACF::field('repeater', [...map...])` |
+| ACF flexible content loop | `ACF::field('flexible_field', [...layout map...])` |
 | `get_template_part()` inline | `$template->render($data)` |
+| Manual pagination logic | `new Pagination([...])` then `->generate()` |
 
 ---
 
@@ -194,6 +197,51 @@ $team = ACF::field('team_members', [
 ]);
 ```
 
+#### Flexible Content Field
+
+Pass the flexible content field name as the first argument, and a layout map config as the second argument.  
+The layout map maps layout slugs to their respective subfield definitions:
+
+```php
+// Equivalent to have_rows() / get_row_layout() / get_sub_field()
+$sections = ACF::field('page_sections', [
+    'hero' => [
+        'title'    => 'hero_title',
+        'subtitle' => 'hero_subtitle',
+        'image'    => 'hero_image',
+    ],
+    'text_content' => [
+        'body' => 'content_editor',
+    ],
+]);
+
+// If no layout map is specified, it returns all field values for each layout:
+$sections_raw = ACF::field('page_sections');
+
+// Output structure:
+// [
+//   [
+//     'layout' => 'hero',
+//     'title' => '...',
+//     'subtitle' => '...',
+//     'image' => '...'
+//   ],
+//   [
+//     'layout' => 'text_content',
+//     'body' => '...'
+//   ]
+// ]
+
+// Usage in template:
+foreach ($sections as $section) {
+    if ($section['layout'] === 'hero') {
+        echo '<h1>' . $section['title'] . '</h1>';
+    } elseif ($section['layout'] === 'text_content') {
+        echo '<div>' . $section['body'] . '</div>';
+    }
+}
+```
+
 ---
 
 ### 3. Modular Page Templates (`PageTemplate`)
@@ -291,6 +339,134 @@ Variables from the `$data` array are automatically extracted and available direc
         </ul>
     <?php endif; ?>
 </section>
+```
+
+---
+
+### 4. Pagination (`Pagination`)
+
+Use `Pagination` to generate pagination data for any list of items. 
+
+> **Critical note for AI Agents:** `Pagination` returns a **structured array**, NOT HTML. You are responsible for rendering the output in your template. Do NOT expect it to echo or return HTML strings.
+
+#### Constructor Arguments
+
+```php
+$pagination = new Pagination([
+    'total_items'       => 100,          // Required: total number of items
+    'items_per_page'    => 10,           // Optional: default is WordPress posts_per_page setting
+    'url_parameter'     => 'paged',      // Optional: GET parameter name, default 'paged'
+    'additional_params' => [],           // Optional: extra GET params to preserve in pagination URLs
+]);
+```
+
+#### Output Structure of `->generate()`
+
+Returns an associative array with two keys:
+
+```php
+[
+    'info' => [
+        'start' => 1,    // First item number on current page
+        'end'   => 10,   // Last item number on current page
+        'total' => 100,  // Total number of items
+    ],
+    'page' => [
+        // Each element is a page link:
+        ['link' => '#',                    'text' => 'Previous', 'class' => 'disabled'],
+        ['link' => 'https://...?paged=1',  'text' => 1,          'class' => 'current'],
+        ['link' => 'https://...?paged=2',  'text' => 2,          'class' => ''],
+        ['text' => '...'],                 // Ellipsis — no 'link' key, do NOT render as <a>
+        ['link' => 'https://...?paged=10', 'text' => 10,         'class' => ''],
+        ['link' => 'https://...?paged=2',  'text' => 'Next',     'class' => ''],
+    ]
+]
+```
+
+**`class` values and their meaning:**
+- `'current'` — active/current page
+- `'disabled'` — Previous/Next when no prev/next page exists (link is `'#'`)
+- `''` (empty) — normal clickable page
+
+**Ellipsis items** have only a `'text'` key (`'...'`) and no `'link'` key — always check with `isset($page['link'])` before rendering an anchor tag.
+
+#### Basic Usage
+
+```php
+use Avilio\Pagination;
+
+$pagination = new Pagination([
+    'total_items'    => $total,
+    'items_per_page' => 9,
+]);
+
+$paged = $pagination->generate();
+```
+
+Returns `''` (empty string) if total pages is 1 or less — always check before rendering:
+
+```php
+<?php if (!empty($paged)): ?>
+    <div class="pagination__info">
+        Showing <?php echo $paged['info']['start'] ?>–<?php echo $paged['info']['end'] ?>
+        of <?php echo $paged['info']['total'] ?> items
+    </div>
+    <nav class="pagination">
+        <?php foreach ($paged['page'] as $page): ?>
+            <?php if (!isset($page['link'])): ?>
+                <span class="pagination__ellipsis">...</span>
+            <?php else: ?>
+                <a href="<?php echo $page['link'] ?>"
+                   class="pagination__item <?php echo $page['class'] ?>">
+                    <?php echo $page['text'] ?>
+                </a>
+            <?php endif; ?>
+        <?php endforeach; ?>
+    </nav>
+<?php endif; ?>
+```
+
+#### With WP_Query
+
+The most common use case — pair with a custom `WP_Query`:
+
+```php
+use Avilio\Pagination;
+
+// Get current page from URL
+$current_page = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
+$per_page     = 9;
+
+$query = new WP_Query([
+    'post_type'      => 'portfolio',
+    'posts_per_page' => $per_page,
+    'paged'          => $current_page,
+]);
+
+$pagination = new Pagination([
+    'total_items'    => $query->found_posts,
+    'items_per_page' => $per_page,
+    'url_parameter'  => 'paged',
+]);
+
+$paged = $pagination->generate();
+```
+
+#### Preserving Additional URL Parameters
+
+Use `additional_params` to keep existing GET parameters in pagination links (e.g. for filter pages):
+
+```php
+$pagination = new Pagination([
+    'total_items'       => $total,
+    'items_per_page'    => 12,
+    'url_parameter'     => 'paged',
+    'additional_params' => [
+        'category' => $_GET['category'] ?? '',
+        'sort'     => $_GET['sort'] ?? '',
+    ],
+]);
+// Generated links will look like: ?paged=2&category=web&sort=latest
 ```
 
 ---

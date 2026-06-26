@@ -47,6 +47,8 @@ class ACF{
                     return $link_object;
                 case 'repeater':
                     return ACF::repeater_data($field_name, $args, $parent);
+                case 'flexible_content':
+                    return ACF::flexible_data($field_name, $args, $parent);
                 case 'image':
                     if (isset($args['required']) && $args['required']) {
 
@@ -92,6 +94,42 @@ class ACF{
                 }
     
     
+                $data[] = $item;
+            }
+        }
+        return $data;
+    }
+
+    public static function flexible_data($flexible_field, $layouts_args = [], $parent = false)
+    {
+        $data = [];
+        if (have_rows($flexible_field, $parent)) {
+            while (have_rows($flexible_field, $parent)) {
+                the_row();
+                $layout = get_row_layout();
+                
+                $item = [
+                    'layout' => $layout
+                ];
+
+                if (empty($layouts_args)) {
+                    $row_data = get_row(true);
+                    if (is_array($row_data)) {
+                        $item = array_merge($item, $row_data);
+                    }
+                } elseif (isset($layouts_args[$layout])) {
+                    $sub_fields = $layouts_args[$layout];
+                    foreach ($sub_fields as $key => $sub_field_name) {
+                        $field_key = is_numeric($key) ? $sub_field_name : $key;
+                        $item[$field_key] = get_sub_field($sub_field_name) ?? null;
+                    }
+                } else {
+                    $row_data = get_row(true);
+                    if (is_array($row_data)) {
+                        $item = array_merge($item, $row_data);
+                    }
+                }
+
                 $data[] = $item;
             }
         }
