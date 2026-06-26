@@ -123,6 +123,7 @@ class ACF{
                     $row_data = get_row(true);
                     if (is_array($row_data)) {
                         $item = array_merge($item, $row_data);
+                        unset($item['acf_fc_layout']);
                     }
                 } elseif (isset($layouts_args[$layout])) {
                     $sub_fields = $layouts_args[$layout];
@@ -141,6 +142,7 @@ class ACF{
                     $row_data = get_row(true);
                     if (is_array($row_data)) {
                         $item = array_merge($item, $row_data);
+                        unset($item['acf_fc_layout']);
                     }
                 }
 

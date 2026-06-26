@@ -3,7 +3,7 @@
 Plugin Name: Avilio
 Plugin URI: soon
 Description: A WordPress helper class plugin
-Version: 1.1.0
+Version: 1.1.1
 Author: Tio27
 Author URI: https://github.com/setioko27
 License: GPL-2.0+
