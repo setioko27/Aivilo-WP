@@ -46,13 +46,13 @@ class ACF{
                     }
                     return $link_object;
                 case 'repeater':
-                    return ACF::repeater_data($field_name, $args, $parent);
+                    return ACF::repeater_data($field_name, $args, $parent, $is_sanitize);
                 case 'flexible_content':
-                    return ACF::flexible_data($field_name, $args, $parent);
+                    return ACF::flexible_data($field_name, $args, $parent, $is_sanitize);
                 case 'image':
                     if (isset($args['required']) && $args['required']) {
 
-                        return get_image($value, $args['size'] ?? null,$args['default']);
+                        return get_image($value, $args['size'] ?? null, $args['default'] ?? 'default_image');
                     }elseif(is_numeric($value)){
                         $size = $args['size']??'full';
                         $img = wp_get_attachment_image_src($value, $size);
@@ -77,7 +77,7 @@ class ACF{
         return ACF::field($name, $args, 'option');
     }
 
-    public static function repeater_data($repeater_field, $sub_fields = [], $parent = false)
+    public static function repeater_data($repeater_field, $sub_fields = [], $parent = false, $is_sanitize = true)
     {
         $data = [];
         if (have_rows($repeater_field, $parent)) {
@@ -89,7 +89,14 @@ class ACF{
                     $item = [];
                     foreach ($sub_fields as $key => $field_name) {
                         $field_key = is_numeric($key) ? $field_name : $key;
-                        $item[$field_key] = get_sub_field($field_name) ?? null;
+                        $sub_field_name = is_array($field_name) ? ($field_name['field'] ?? null) : $field_name;
+                        $sub_field_args = is_array($field_name) ? $field_name : [];
+
+                        if ($is_sanitize) {
+                            $item[$field_key] = ACF::field($sub_field_name, $sub_field_args, false, true, $is_sanitize) ?? null;
+                        } else {
+                            $item[$field_key] = get_sub_field($sub_field_name) ?? null;
+                        }
                     }
                 }
     
@@ -100,7 +107,7 @@ class ACF{
         return $data;
     }
 
-    public static function flexible_data($flexible_field, $layouts_args = [], $parent = false)
+    public static function flexible_data($flexible_field, $layouts_args = [], $parent = false, $is_sanitize = true)
     {
         $data = [];
         if (have_rows($flexible_field, $parent)) {
@@ -119,9 +126,16 @@ class ACF{
                     }
                 } elseif (isset($layouts_args[$layout])) {
                     $sub_fields = $layouts_args[$layout];
-                    foreach ($sub_fields as $key => $sub_field_name) {
-                        $field_key = is_numeric($key) ? $sub_field_name : $key;
-                        $item[$field_key] = get_sub_field($sub_field_name) ?? null;
+                    foreach ($sub_fields as $key => $field_name) {
+                        $field_key = is_numeric($key) ? $field_name : $key;
+                        $sub_field_name = is_array($field_name) ? ($field_name['field'] ?? null) : $field_name;
+                        $sub_field_args = is_array($field_name) ? $field_name : [];
+
+                        if ($is_sanitize) {
+                            $item[$field_key] = ACF::field($sub_field_name, $sub_field_args, false, true, $is_sanitize) ?? null;
+                        } else {
+                            $item[$field_key] = get_sub_field($sub_field_name) ?? null;
+                        }
                     }
                 } else {
                     $row_data = get_row(true);

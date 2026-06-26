@@ -8,12 +8,14 @@ class Pagination {
     private $total_pages;
     private $url_parameter;
     private $additional_params;
+    private $base_url;
 
     public function __construct($args) {
         $this->total_items = $args['total_items'] ?? 0;
         $this->items_per_page = $args['items_per_page'] ?? get_option('posts_per_page');
         $this->url_parameter = $args['url_parameter'] ?? 'paged';
         $this->additional_params = $args['additional_params'] ?? [];
+        $this->base_url = $args['base_url'] ?? '';
         $this->current_page = $this->get_current_page();
         $this->total_pages = ceil($this->total_items / $this->items_per_page);
     }
@@ -86,7 +88,7 @@ class Pagination {
             $url = add_query_arg(array_merge(
                 [$this->url_parameter => $page_number],
                 $this->additional_params
-            ), get_permalink());
+            ), $this->base_url ?: $_SERVER['REQUEST_URI']);
         }
         
         return ['link' => $url,'text' => $text,'class'=>$class];

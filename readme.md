@@ -78,7 +78,7 @@ $myTheme = new Theme;
 // Register scripts
 // Each script is an associative array.
 // Required keys: 'handle', 'src'
-// Optional keys: 'deps' (array), 'ver' (string), 'in_footer' (bool, default: true)
+// Optional keys: 'deps' (array), 'ver' (string), 'in_footer' (bool, default: true), 'strategy' (string: 'defer'|'async')
 $myTheme->addScripts([
     [
         'handle' => 'main-js',
@@ -170,6 +170,15 @@ $slides = ACF::field('hero_slides', [
     'image'   => 'slide_image',    // 'your_alias' => 'acf_sub_field_name'
     'caption' => 'slide_caption',
     'url'     => 'slide_link_url',
+]);
+
+// You can also pass an array config for a sub-field to specify options (like custom image sizes):
+$slides_custom = ACF::field('hero_slides', [
+    'image'   => [
+        'field' => 'slide_image',
+        'size'  => 'medium',      // custom size for the sub-field image
+    ],
+    'caption' => 'slide_caption',
 ]);
 
 // Output structure:
@@ -357,6 +366,7 @@ $pagination = new Pagination([
     'items_per_page'    => 10,           // Optional: default is WordPress posts_per_page setting
     'url_parameter'     => 'paged',      // Optional: GET parameter name, default 'paged'
     'additional_params' => [],           // Optional: extra GET params to preserve in pagination URLs
+    'base_url'          => '',           // Optional: override the base URL (defaults to $_SERVER['REQUEST_URI'])
 ]);
 ```
 

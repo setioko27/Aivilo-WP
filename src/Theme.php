@@ -50,12 +50,12 @@ class Theme
 
     public function addAction(string $hook, callable $function, int $priority = self::DEFAULT_PRIORITY, int $accepted_args = self::DEFAULT_ARGS): void
     {
-        add_action($hook, fn(...$args) => call_user_func_array($function, $args), $priority, $accepted_args);
+        add_action($hook, $function, $priority, $accepted_args);
     }
 
     public function addFilter(string $hook, callable $function, int $priority = self::DEFAULT_PRIORITY, int $accepted_args = self::DEFAULT_ARGS): void
     {
-        add_filter($hook, fn(...$args) => call_user_func_array($function, $args), $priority, $accepted_args);
+        add_filter($hook, $function, $priority, $accepted_args);
     }
 
     private function actionAfterSetup(callable $function): void
@@ -170,12 +170,23 @@ class Theme
 
     private function enqueueScript(array $script): void
     {
+        $strategy = $script['strategy'] ?? null;
+        $in_footer = $script['in_footer'] ?? true;
+        
+        $args = $in_footer;
+        if ($strategy) {
+            $args = [
+                'strategy' => $strategy,
+                'in_footer' => $in_footer,
+            ];
+        }
+
         wp_enqueue_script(
             $script['handle'],
             $script['src'],
             $script['deps'] ?? [],
             $script['ver'] ?? false,
-            $script['in_footer'] ?? true
+            $args
         );
     }
 

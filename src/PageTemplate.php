@@ -92,7 +92,7 @@ class PageTemplate
             'title' => $term->name,
             'description' => $term->description,
             'featured_image' => get_field('featured_image', 'term_' . $term->term_id),
-            'posts' => $this->get_posts([
+            'posts' => get_posts([
                 'tax_query' => [[
                     'taxonomy' => $term->taxonomy,
                     'field' => 'term_id',
