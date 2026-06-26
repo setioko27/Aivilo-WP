@@ -349,6 +349,7 @@ Variables from the `$data` array are automatically extracted and available direc
         </ul>
     <?php endif; ?>
 </section>
+```
 #### Flexible Page Templates (`render_flexible`)
 
 If your page structure depends completely on an ACF Flexible Content field, allowing clients to freely add and reorder page modules, use the `render_flexible` method.
