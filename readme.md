@@ -37,6 +37,7 @@ require_once get_template_directory() . '/vendor/autoload.php';
 | `ACF` | `Avilio\ACF` | ACF field retrieval, options, repeaters |
 | `PageTemplate` | `Avilio\PageTemplate` | Modular template rendering |
 | `Pagination` | `Avilio\Pagination` | Pagination data generator (returns array, not HTML) |
+| `LoadMore` | `Avilio\LoadMore` | AJAX pagination / Load More handler |
 
 ---
 
@@ -530,6 +531,91 @@ $data = [
 </main>
 
 <?php get_footer(); ?>
+```
+
+### 5. AJAX Load More (`LoadMore`)
+
+Use `LoadMore` to easily set up custom AJAX pagination (Load More button or infinite scroll) for any post type.
+
+#### PHP Setup (`functions.php`)
+
+Initialize `LoadMore` with an action name, query parameters, target template part, and a target selector.
+
+By default, if you specify a `'target'` container selector (e.g. `#portfolio-container`) and `'enqueue_js' => true` (default), **Avilio automatically enqueues a zero-boilerplate JavaScript script** to handle fetching and appending items.
+
+```php
+use Avilio\LoadMore;
+
+$loadMorePortfolio = new LoadMore([
+    'action'         => 'load_more_portfolio',                 // AJAX action hook suffix
+    'post_type'      => 'portfolio',                           // Post type to query
+    'posts_per_page' => 6,                                     // Number of posts to load per request
+    'template_part'  => 'template-parts/content/portfolio-card', // Relative path to template part
+    'target'         => '#portfolio-container',                // HTML container where posts are appended
+    'enqueue_js'     => true,                                  // Auto-load helper JS script (default: true)
+    'extra_args'     => [                                      // Optional: extra query arguments
+        'orderby' => 'date',
+        'order'   => 'DESC'
+    ]
+]);
+```
+
+#### Template Implementation
+
+Output the required attributes on your trigger button using `button_attrs()`:
+
+```php
+<div class="portfolio-list" id="portfolio-container">
+    <?php
+    // Output initial posts here...
+    ?>
+</div>
+
+<?php if (true /* Condition to check if load more is needed */): ?>
+    <button id="load-more-btn" <?php echo $loadMorePortfolio->button_attrs(); ?>>
+        Load More
+    </button>
+<?php endif; ?>
+```
+
+#### Custom Frontend JavaScript (Optional)
+
+If you set `'enqueue_js' => false`, you can handle the AJAX response manually using custom JavaScript:
+
+```javascript
+document.getElementById('load-more-btn')?.addEventListener('click', function(e) {
+    const btn = e.currentTarget;
+    const container = document.getElementById('portfolio-container');
+    
+    let page = parseInt(btn.dataset.page);
+    let maxPages = parseInt(btn.dataset.maxPages);
+    
+    const formData = new FormData();
+    formData.append('action', btn.dataset.action);
+    formData.append('nonce', btn.dataset.nonce);
+    formData.append('page', page + 1);
+
+    btn.innerText = 'Loading...';
+    btn.disabled = true;
+    
+    fetch('/wp-admin/admin-ajax.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.text())
+    .then(html => {
+        if (html.trim()) {
+            container.insertAdjacentHTML('beforeend', html);
+            btn.dataset.page = page + 1;
+            btn.innerText = 'Load More';
+            btn.disabled = false;
+            
+            if (page + 1 >= maxPages) {
+                btn.remove();
+            }
+        }
+    });
+});
 ```
 
 ---
